@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тренировки</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Тренировки">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#171D26">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --floor: #171D26;
+    --floor-raised: #232B38;
+    --chalk: #EDF0F2;
+    --ink: #171D26;
+    --steel: #8D97A3;
+    --muted: #5A6472;
+    --line: #D2D8DE;
+    --on-floor-muted: #B9C1CB;
+    --accent: #E0453A;
+    --on-accent: #FFFFFF;
+    --display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
+    --text: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  html { background: #171D26; }
+  body {
+    background: var(--chalk);
+    color: var(--ink);
+    font-family: var(--text);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 32px; }
+
+  /* Тёмная «площадка» со штангой */
+  .stage {
+    background: var(--floor);
+    color: #fff;
+    padding: calc(16px + env(safe-area-inset-top)) 20px 22px;
+    border-radius: 0 0 28px 28px;
+  }
+  .stage :focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  .weeks { display: flex; align-items: center; gap: 12px; }
+  .weeks-label { font-size: 14px; color: var(--on-floor-muted); }
+  .weeks-set {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    background: var(--floor-raised);
+    padding: 4px;
+    border-radius: 14px;
+  }
+  .week {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--on-floor-muted);
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 14px;
+    min-height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .week[aria-selected="true"] { background: #fff; color: var(--ink); }
+  .week svg { display: none; }
+  .week.done svg { display: block; }
+
+  .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 12px; }
+  .day {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--on-floor-muted);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 0;
+    border-radius: 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+  }
+  .day[aria-selected="true"] { background: var(--floor-raised); color: #fff; }
+  .disc {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 7px solid var(--c);
+    display: grid;
+    place-items: center;
+    color: var(--oc);
+  }
+  .disc svg { display: none; }
+  .day.done .disc { background: var(--c); border-width: 0; }
+  .day.done .disc svg { display: block; }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 22px 0 0;
+  }
+  .barbell { display: block; width: 100%; height: auto; margin: 14px 0 6px; }
+  .plate {
+    fill: var(--accent);
+    opacity: 0;
+    transform-box: fill-box;
+    transition: opacity .2s ease, transform .28s cubic-bezier(.2, .8, .3, 1);
+  }
+  .plate.left { transform: translateX(-16px); }
+  .plate.right { transform: translateX(16px); }
+  .plate.on { opacity: 1; transform: none; }
+  .progress { margin: 0; font-size: 15px; color: var(--on-floor-muted); }
+  .progress b { color: #fff; font-family: var(--display); font-weight: 500; }
+
+  /* Список упражнений */
+  .tip { margin: 18px 20px 0; font-size: 14px; color: var(--muted); }
+  .tip b { color: var(--ink); font-weight: 600; }
+
+  .list { list-style: none; margin: 0; padding: 4px 20px 0; }
+  .list li + li { border-top: 1px solid var(--line); }
+  .row {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 0;
+    cursor: pointer;
+  }
+  .row:focus-visible, .ghost:focus-visible, .next:focus-visible {
+    outline: 3px solid #3B6FE0;
+    outline-offset: 3px;
+    border-radius: 12px;
+  }
+  .check {
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid var(--steel);
+    display: grid;
+    place-items: center;
+    color: var(--on-accent);
+    transition: background-color .18s ease, border-color .18s ease, transform .18s ease;
+  }
+  .check::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--steel);
+  }
+  .check svg { display: none; }
+  .row[aria-checked="true"] .check {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.04);
+  }
+  .row[aria-checked="true"] .check::before { display: none; }
+  .row[aria-checked="true"] .check svg { display: block; }
+
+  .body { min-width: 0; padding-top: 1px; }
+  .name { display: block; font-weight: 600; font-size: 17px; line-height: 1.25; }
+  .sets { display: block; font-family: var(--display); font-weight: 500; font-size: 14px; margin-top: 6px; }
+  .note { display: block; font-size: 14px; color: var(--muted); margin-top: 5px; }
+  .row[aria-checked="true"] .name,
+  .row[aria-checked="true"] .sets { color: var(--muted); }
+
+  .finish { margin: 12px 20px 0; padding-top: 18px; border-top: 1px solid var(--line); }
+  .finish p { margin: 0 0 12px; font-weight: 600; }
+  .next {
+    appearance: none;
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 16px;
+    cursor: pointer;
+  }
+
+  .foot { margin: 26px 20px 0; font-size: 14px; color: var(--muted); }
+  .foot p { margin: 0 0 10px; }
+  .foot .error { color: #B3261E; }
+  .ghost {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 10px 0;
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+  .confirm span { color: var(--ink); width: 100%; }
+  .confirm .danger { color: #B3261E; font-weight: 600; }
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .plate, .check { transition: none; }
+    .plate.left, .plate.right { transform: none; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <section class="stage">
+    <div class="weeks">
+      <span class="weeks-label" id="weeksLabel">Неделя</span>
+      <div class="weeks-set" role="tablist" aria-labelledby="weeksLabel" id="weeks"></div>
+    </div>
+    <div class="days" role="tablist" aria-label="День тренировки" id="days"></div>
+
+    <h1 id="title"></h1>
+    <svg class="barbell" id="barbell" viewBox="0 0 320 84" aria-hidden="true"></svg>
+    <p class="progress" id="progress" aria-live="polite"></p>
+  </section>
+
+  <p class="tip" id="tip"></p>
+  <ul class="list" id="list"><li style="padding:20px 0;color:var(--muted)">Загружаю прогресс…</li></ul>
+
+  <div class="finish" id="finish" hidden>
+    <p id="finishText"></p>
+    <button class="next" id="nextBtn" type="button">Открыть следующую тренировку</button>
+  </div>
+
+  <div class="foot">
+    <p id="status">Отметки сохраняются на этом телефоне автоматически.</p>
+    <button class="ghost" id="resetBtn" type="button">Сбросить прогресс</button>
+    <div class="confirm" id="confirm" hidden>
+      <span>Удалить все отметки за месяц?</span>
+      <button class="ghost danger" id="resetYes" type="button">Удалить отметки</button>
+      <button class="ghost" id="resetNo" type="button">Оставить</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  const STORAGE_KEY = 'workout-progress-v1';
+  const CHECK_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SMALL_CHECK = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  // Цвета дней взяты у соревновательных блинов: 25, 20, 15 и 10 кг
+  const DAYS = [
+    {
+      title: 'Ягодицы, тяжёлый', color: '#E0453A', on: '#FFFFFF',
+      ex: [
+        ['Ягодичный мост со штангой', '5 × 8–10', 'Пауза 2 секунды вверху, таз подкручен. Отдых 2–3 минуты.'],
+        ['Румынская тяга', '3 × 10–12', 'Опускай 3 секунды, таз назад, спина прямая. Отдых 2–3 минуты.'],
+        ['Отведение ноги назад в кроссовере', '3 × 12–15 на каждую', 'Без прогиба в пояснице. В последнем подходе дроп-сет.'],
+        ['Разведение ног в тренажёре', '3 × 15–20', 'Корпус наклонён вперёд. В последнем подходе дроп-сет.'],
+        ['Планка', '3 × 40–60 сек', 'Таз подкручен, живот втянут.']
+      ]
+    },
+    {
+      title: 'Спина и руки', color: '#3B6FE0', on: '#FFFFFF',
+      ex: [
+        ['Тяга верхнего блока к груди', '3 × 10–12', 'Сначала опусти лопатки, потом тяни локти к рёбрам.'],
+        ['Тяга горизонтального блока', '3 × 10–12', 'Грудь вперёд, в конце своди лопатки.'],
+        ['Тяга гантели в наклоне', '3 × 10–12 на каждую', 'Локоть идёт к тазу, корпус не разворачивай.'],
+        ['Разгибание рук на блоке с канатом', '3 × 12–15', 'Локти прижаты, внизу разводи концы каната. В последнем подходе дроп-сет.'],
+        ['Французский жим с гантелью', '3 × 12', 'Локти смотрят вверх и не расходятся.'],
+        ['Сгибание рук с гантелями', '2 × 12–15', 'Без раскачки корпусом.']
+      ]
+    },
+    {
+      title: 'Ягодицы, объёмный', color: '#F4BE2A', on: '#171D26',
+      ex: [
+        ['Ягодичный мост на одной ноге', '3 × 12–15 на каждую', 'Пауза 1 секунда вверху, таз держи ровно.'],
+        ['Гиперэкстензия с округлённой спиной', '3 × 12–15', 'Носки наружу, опускайся 3 секунды, выше прямой линии не поднимайся.'],
+        ['Протяжка каната между ног', '3 × 12–15', 'Таз назад, затем толкай его вперёд. Руки только держат канат.'],
+        ['Отведение ноги в сторону в кроссовере', '3 × 15 на каждую', 'Корпус неподвижен. В последнем подходе дроп-сет.'],
+        ['Скручивания на блоке', '3 × 12–15', 'Скругляй спину, тяни рёбра к тазу.']
+      ]
+    },
+    {
+      title: 'Верх и пресс', color: '#35A862', on: '#FFFFFF',
+      ex: [
+        ['Жим гантелей сидя', '3 × 10–12', 'Поясница прижата к спинке.'],
+        ['Махи гантелями в стороны', '3 × 12–15', 'Локти чуть согнуты, поднимай до уровня плеч.'],
+        ['Жим гантелей лёжа или отжимания', '3 × 10–12', 'Лопатки сведены, локти под углом 45°.'],
+        ['Разгибание рук из-за головы на блоке', '3 × 12–15', 'Локти у головы, полностью выпрямляй руки.'],
+        ['Подъём ног лёжа или в висе', '3 × 12–15', 'Подкручивай таз, без раскачки.'],
+        ['Велосипед', '3 × 20', 'Медленно, локоть тянется к противоположному колену.']
+      ]
+    }
+  ];
+
+  const WEEK_TIPS = [
+    'Бери рабочие веса и оставляй 2 повтора в запасе.',
+    'Прибавь 2,5–5 кг в мосте и румынской тяге, в остальном 1–2 кг или 1–2 повтора.',
+    'Ещё один шаг вверх по весу или повторам, 1–2 повтора в запасе.',
+    'В последнем подходе каждого упражнения иди почти до отказа.'
+  ];
+
+  let state = { done: {} };
+  let cur = { w: 0, d: 0 };
+  let saveTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+  const keyOf = (w, d) => w + '-' + d;
+  const doneList = (w, d) => state.done[keyOf(w, d)] || [];
+  const isDayDone = (w, d) => doneList(w, d).length === DAYS[d].ex.length;
+  const isWeekDone = (w) => DAYS.every((_, d) => isDayDone(w, d));
+
+  function firstIncomplete() {
+    for (let w = 0; w < 4; w++) {
+      for (let d = 0; d < 4; d++) {
+        if (!isDayDone(w, d)) return { w, d };
+      }
+    }
+    return null;
+  }
+
+  function setStatus(text, isError) {
+    const el = $('status');
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+  }
+
+  /* Навигация: недели и дни */
+  function buildNav() {
+    const weeks = $('weeks');
+    weeks.innerHTML = '';
+    for (let w = 0; w < 4; w++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'week';
+      b.setAttribute('role', 'tab');
+      b.innerHTML = '<span>' + (w + 1) + '</span>' + SMALL_CHECK;
+      b.addEventListener('click', () => open(w, cur.d));
+      weeks.appendChild(b);
+    }
+    const days = $('days');
+    days.innerHTML = '';
+    DAYS.forEach((day, d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'day';
+      b.setAttribute('role', 'tab');
+      b.style.setProperty('--c', day.color);
+      b.style.setProperty('--oc', day.on);
+      b.innerHTML = '<span class="disc">' + SMALL_CHECK + '</span><span>День ' + (d + 1) + '</span>';
+      b.addEventListener('click', () => open(cur.w, d));
+      days.appendChild(b);
+    });
+  }
+
+  function paintNav() {
+    [...$('weeks').children].forEach((b, w) => {
+      const done = isWeekDone(w);
+      b.classList.toggle('done', done);
+      b.setAttribute('aria-selected', String(w === cur.w));
+      b.setAttribute('aria-label', 'Неделя ' + (w + 1) + (done ? ', выполнена' : ''));
+    });
+    [...$('days').children].forEach((b, d) => {
+      const done = isDayDone(cur.w, d);
+      b.classList.toggle('done', done);
+      b.setAttribute('aria-selected', String(d === cur.d));
+      b.setAttribute('aria-label', 'День ' + (d + 1) + ': ' + DAYS[d].title + (done ? ', выполнен' : ''));
+    });
+  }
+
+  /* Штанга: один блин с каждой стороны за каждое упражнение */
+  function buildBarbell(count) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = $('barbell');
+    svg.innerHTML = '';
+    const rect = (attrs, cls) => {
+      const r = document.createElementNS(NS, 'rect');
+      Object.keys(attrs).forEach((k) => r.setAttribute(k, attrs[k]));
+      if (cls) r.setAttribute('class', cls);
+      svg.appendChild(r);
+      return r;
+    };
+    rect({ x: 8, y: 37.5, width: 88, height: 9, rx: 2, fill: '#8D97A3' });
+    rect({ x: 224, y: 37.5, width: 88, height: 9, rx: 2, fill: '#8D97A3' });
+    rect({ x: 96, y: 39.5, width: 128, height: 5, fill: '#6F7985' });
+    rect({ x: 94, y: 33, width: 6, height: 18, rx: 2, fill: '#B9C1CB' });
+    rect({ x: 220, y: 33, width: 6, height: 18, rx: 2, fill: '#B9C1CB' });
+
+    const W = 11, GAP = 3;
+    for (let i = 0; i < count; i++) {
+      const h = 68 - i * 7;
+      const y = 42 - h / 2;
+      const xl = 94 - GAP - (i + 1) * W - i * GAP;
+      const xr = 226 + GAP + i * (W + GAP);
+      const ghost = { y, width: W, height: h, rx: 3, fill: 'none', stroke: 'rgba(255,255,255,.24)', 'stroke-dasharray': '3 3' };
+      rect(Object.assign({ x: xl }, ghost));
+      rect(Object.assign({ x: xr }, ghost));
+      rect({ x: xl, y, width: W, height: h, rx: 3, 'data-i': i }, 'plate left');
+      rect({ x: xr, y, width: W, height: h, rx: 3, 'data-i': i }, 'plate right');
+    }
+  }
+
+  /* Тренировка дня */
+  function buildDay() {
+    const day = DAYS[cur.d];
+    const root = document.documentElement;
+    root.style.setProperty('--accent', day.color);
+    root.style.setProperty('--on-accent', day.on);
+
+    $('title').textContent = day.title;
+    $('tip').innerHTML = '<b>Неделя ' + (cur.w + 1) + '.</b> ' + WEEK_TIPS[cur.w];
+    buildBarbell(day.ex.length);
+
+    const list = $('list');
+    list.innerHTML = '';
+    day.ex.forEach((ex, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'row';
+      b.setAttribute('role', 'checkbox');
+      b.innerHTML =
+        '<span class="check">' + CHECK_ICON + '</span>' +
+        '<span class="body"><span class="name"></span><span class="sets"></span><span class="note"></span></span>';
+      b.querySelector('.name').textContent = ex[0];
+      b.querySelector('.sets').textContent = ex[1];
+      b.querySelector('.note').textContent = ex[2];
+      b.addEventListener('click', () => toggle(i));
+      li.appendChild(b);
+      list.appendChild(li);
+    });
+    paintDay();
+  }
+
+  function paintDay() {
+    const day = DAYS[cur.d];
+    const done = doneList(cur.w, cur.d);
+    const total = day.ex.length;
+
+    [...$('list').querySelectorAll('.row')].forEach((b, i) => {
+      b.setAttribute('aria-checked', String(done.includes(i)));
+    });
+    [...$('barbell').querySelectorAll('.plate')].forEach((p) => {
+      p.classList.toggle('on', Number(p.getAttribute('data-i')) < done.length);
+    });
+
+    const complete = done.length === total;
+    $('progress').innerHTML = complete
+      ? '<b>Тренировка выполнена</b>'
+      : 'Сделано <b>' + done.length + ' из ' + total + '</b>';
+
+    const finish = $('finish');
+    finish.hidden = !complete;
+    if (complete) {
+      const next = firstIncomplete();
+      $('nextBtn').hidden = !next;
+      $('finishText').textContent = next
+        ? 'Все упражнения отмечены.'
+        : 'Месяц пройден. Сбрось прогресс и начни новый цикл с большими весами.';
+    }
+  }
+
+  function open(w, d) {
+    cur = { w, d };
+    $('confirm').hidden = true;
+    $('resetBtn').hidden = false;
+    buildDay();
+    paintNav();
+  }
+
+  function toggle(i) {
+    const k = keyOf(cur.w, cur.d);
+    const set = new Set(state.done[k] || []);
+    if (set.has(i)) set.delete(i); else set.add(i);
+    if (set.size) state.done[k] = [...set].sort((a, b) => a - b);
+    else delete state.done[k];
+    paintDay();
+    paintNav();
+    save();
+  }
+
+  /* Сохранение */
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        setStatus('Отметки сохраняются на этом телефоне автоматически.');
+      } catch (err) {
+        setStatus('Не удалось сохранить отметку. Выключи приватный режим браузера и отметь ещё раз.', true);
+      }
+    }, 150);
+  }
+
+  async function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.done === 'object' && parsed.done) state = { done: parsed.done };
+      }
+    } catch (err) {
+      setStatus('Отметки не сохранятся: браузер запретил хранение. Выключи приватный режим.', true);
+    }
+  }
+
+  $('nextBtn').addEventListener('click', () => {
+    const next = firstIncomplete();
+    if (next) {
+      open(next.w, next.d);
+      window.scrollTo({ top: 0 });
+    }
+  });
+  $('resetBtn').addEventListener('click', () => {
+    $('resetBtn').hidden = true;
+    $('confirm').hidden = false;
+  });
+  $('resetNo').addEventListener('click', () => {
+    $('confirm').hidden = true;
+    $('resetBtn').hidden = false;
+  });
+  $('resetYes').addEventListener('click', () => {
+    state = { done: {} };
+    save();
+    open(0, 0);
+    window.scrollTo({ top: 0 });
+  });
+
+  (async function init() {
+    buildNav();
+    paintNav();
+    await load();
+    const start = firstIncomplete() || { w: 3, d: 3 };
+    open(start.w, start.d);
+  })();
+</script>
+</body>
+</html>
